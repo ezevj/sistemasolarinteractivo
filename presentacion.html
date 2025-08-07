@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorador del Sistema Solar Interactivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a1e;
+            color: #e2e8f0;
+            overflow: hidden;
+            background-image: radial-gradient(ellipse at 70% 30%, rgba(100, 120, 200, 0.1), transparent 50%),
+                              radial-gradient(ellipse at 30% 70%, rgba(200, 100, 150, 0.1), transparent 50%);
+        }
+
+        #parallax-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+        }
+        .stars {
+            position: absolute;
+            top: -10%; left: -10%;
+            width: 120%; height: 120%;
+            background-repeat: repeat;
+            transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        #stars1 {
+            background-image:
+                radial-gradient(1px 1px at 10% 30%, white, transparent 100%),
+                radial-gradient(1px 1px at 80% 60%, white, transparent 100%),
+                radial-gradient(2px 2px at 50% 50%, rgba(255,255,255,0.8), transparent 100%);
+            background-size: 300px 300px, 400px 400px, 500px 500px;
+        }
+        #stars2 {
+            background-image:
+                radial-gradient(1px 1px at 20% 80%, rgba(255,255,255,0.7), transparent 100%),
+                radial-gradient(1px 1px at 75% 10%, rgba(255,255,255,0.7), transparent 100%);
+            background-size: 350px 350px, 550px 550px;
+            background-position: 50px 50px, 100px 100px;
+        }
+        #stars3 {
+            background-image:
+                radial-gradient(1px 1px at 45% 45%, rgba(255,255,255,0.5), transparent 100%),
+                radial-gradient(1px 1px at 90% 15%, rgba(255,255,255,0.5), transparent 100%);
+            background-size: 400px 400px, 600px 600px;
+        }
+
+        .view-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .view-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.9);
+        }
+        
+        #view-toggle {
+            position: absolute;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            border-radius: 999px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .toggle-button {
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            border: none;
+            background-color: transparent;
+            color: #a0aec0;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .toggle-button.active {
+            background-color: #4a5568;
+            color: #ffffff;
+        }
+
+        .solar-system {
+            position: relative;
+            width: 90vmin;
+            height: 90vmin;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .sun {
+            width: 10%;
+            height: 10%;
+            background: radial-gradient(circle, #ffd700, #ff8c00, #ff4500);
+            border-radius: 50%;
+            box-shadow: 0 0 60px #ffd700, 0 0 90px #ff8c00, inset 0 0 20px #ff4500;
+            position: absolute;
+            cursor: pointer;
+            z-index: 10;
+            animation: pulse-sun 5s ease-in-out infinite;
+        }
+        @keyframes pulse-sun {
+            0% { transform: scale(1); box-shadow: 0 0 60px #ffd700, 0 0 90px #ff8c00, inset 0 0 20px #ff4500; }
+            50% { transform: scale(1.05); box-shadow: 0 0 70px #ffd700, 0 0 100px #ff8c00, inset 0 0 25px #ff4500; }
+            100% { transform: scale(1); box-shadow: 0 0 60px #ffd700, 0 0 90px #ff8c00, inset 0 0 20px #ff4500; }
+        }
+
+        .orbit {
+            position: absolute;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            animation: rotate-orbit linear infinite;
+            pointer-events: none;
+        }
+        
+        .celestial-body {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            pointer-events: auto;
+            transform-origin: center;
+        }
+        .celestial-body.for-comparison {
+            box-shadow: 0 0 25px #34d399, 0 0 40px #34d399 !important;
+        }
+
+        .planet, .dwarf-planet {
+            top: 50%;
+            left: 0;
+            min-width: 12px;
+            min-height: 12px;
+        }
+        
+        .celestial-body:hover, .celestial-body.active,
+        .probe:hover, .rover:hover, .comet:hover {
+            box-shadow: 0 0 15px #fff, 0 0 25px #fff !important;
+            filter: drop-shadow(0 0 5px #fff);
+        }
+        .planet:hover, .dwarf-planet:hover, .moon:hover {
+             transform: translateY(-50%) scale(1.2);
+        }
+        .planet.active, .dwarf-planet.active, .moon.active {
+             transform: translateY(-50%) scale(1.1);
+        }
+
+        @keyframes rotate-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotate-clouds { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* --- Órbitas y Tamaños --- */
+        #mercury-orbit { width: 18%; height: 18%; animation-duration: 8.8s; }
+        #mercury { width: 2%; height: 2%; }
+        #venus-orbit { width: 25%; height: 25%; animation-duration: 22.5s; }
+        #venus { width: 2.5%; height: 2.5%; }
+        #earth-orbit { width: 35%; height: 35%; animation-duration: 36.5s; }
+        #earth { width: 2.6%; height: 2.6%; }
+        #mars-orbit { width: 45%; height: 45%; animation-duration: 68.7s; }
+        #mars { width: 2.2%; height: 2.2%; }
+        #ceres-orbit { width: 52%; height: 52%; animation-duration: 100s; }
+        #ceres { width: 1.8%; height: 1.8%; }
+        #jupiter-orbit { width: 60%; height: 60%; animation-duration: 120s; }
+        #jupiter { width: 6%; height: 6%; }
+        #saturn-orbit { width: 78%; height: 78%; animation-duration: 290s; }
+        #saturn { width: 4.5%; height: 4.5%; }
+        #uranus-orbit { width: 90%; height: 90%; animation-duration: 840s; }
+        #uranus { width: 3.5%; height: 3.5%; }
+        #neptune-orbit { width: 100%; height: 100%; animation-duration: 1650s; }
+        #neptune { width: 3.3%; height: 3.3%; }
+        #pluto-orbit { width: 108%; height: 108%; animation-duration: 2480s; }
+        #pluto { width: 1.5%; height: 1.5%; }
+        #haumea-orbit { width: 115%; height: 115%; animation-duration: 2840s; }
+        #haumea { width: 1.6%; height: 1.6%; }
+        #makemake-orbit { width: 122%; height: 122%; animation-duration: 3060s; }
+        #makemake { width: 1.4%; height: 1.4%; }
+        #eris-orbit { width: 130%; height: 130%; animation-duration: 5590s; }
+        #eris { width: 1.5%; height: 1.5%; }
+        
+        .planet, .dwarf-planet { transform: translateY(-50%); }
+        #haumea { transform: translateY(-50%) rotate(45deg); }
+
+        /* --- Cinturones --- */
+        .asteroid-belt, .kuiper-belt { position: absolute; border-radius: 50%; pointer-events: none; border: 2px dashed rgba(255, 255, 255, 0.2); animation: rotate-orbit linear infinite; }
+        .asteroid-belt { width: 52%; height: 52%; animation-duration: 150s; }
+        .kuiper-belt { width: 118%; height: 118%; animation-duration: 2000s; }
+
+        /* --- Clases visuales separadas de los tamaños --- */
+        .visual-mercury { background: radial-gradient(circle at 20% 20%, #E5E5E5, #8A8A8A); box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5); }
+        .visual-venus { background: radial-gradient(circle at 70% 20%, #F8E8C3, #D8B883); box-shadow: inset -5px -5px 15px rgba(100,80,50,0.6); }
+        .visual-earth { background: radial-gradient(circle at 25% 30%, #6fa8dc, #0b4f8e 80%); box-shadow: inset -8px -8px 20px rgba(0,0,0,0.7); overflow: hidden; }
+        .visual-earth::before { content: ''; position: absolute; width: 100%; height: 100%; background: radial-gradient(circle at 60% 70%, #5a8a38 10%, transparent 40%), radial-gradient(circle at 20% 30%, #8c7853 15%, transparent 30%); opacity: 0.8; }
+        .visual-earth::after { content: ''; position: absolute; top: 0; left: 0; width: 200%; height: 200%; background: radial-gradient(circle at 25% 25%, rgba(255,255,255,0.5), transparent 30%), radial-gradient(circle at 55% 50%, rgba(255,255,255,0.4), transparent 40%); animation: rotate-clouds 45s linear infinite; transform-origin: 50% 50%; }
+        .visual-mars { background: radial-gradient(circle at 20% 80%, #FF8C69, #C1440E); box-shadow: inset -5px 5px 10px rgba(50,0,0,0.6); }
+        .visual-jupiter { background: linear-gradient(to bottom, #E0D6C4 0%, #C1A989 20%, #B39974 30%, #D9C3A5 50%, #A68A6D 70%, #C7B299 100%), radial-gradient(circle at 70% 65%, #B8614A 2%, transparent 10%); box-shadow: inset -10px -10px 30px rgba(50,40,30,0.5); }
+        .visual-saturn { background: radial-gradient(circle at 20% 30%, #F5DEB3, #DFCDA4); box-shadow: inset -8px -8px 20px rgba(80,70,50,0.5); }
+        .visual-saturn::after { content: ''; position: absolute; top: 50%; left: 50%; width: 220%; height: 220%; border-radius: 50%; border: 0 solid transparent; box-shadow: 0 0 0 1px rgba(223, 205, 164, 0.8), inset 0 0 0 3px rgba(223, 205, 164, 0.6); transform: translate(-50%, -50%) rotateX(75deg) rotateY(0deg); }
+        .visual-uranus { background: radial-gradient(circle, #AFDBF5, #89CFF0); box-shadow: inset -5px -5px 15px rgba(50, 80, 100, 0.5); }
+        .visual-neptune { background: radial-gradient(circle at 80% 80%, #5B5DDF, #3F54BA); box-shadow: inset 5px 5px 20px rgba(20, 30, 80, 0.6); }
+        .visual-ceres { background: radial-gradient(circle at 30% 30%, #d1d1d1, #787878); box-shadow: inset -3px -3px 8px rgba(0,0,0,0.6); }
+        .visual-pluto { background: radial-gradient(circle at 70% 20%, #f0e6d2, #c1b49a); box-shadow: inset -4px -4px 10px rgba(50,40,30,0.5); }
+        .visual-haumea { background: radial-gradient(circle at 50% 50%, #e0e0e0, #b0b0b0); box-shadow: inset 0 0 10px rgba(0,0,0,0.4); border-radius: 40%; }
+        .visual-makemake { background: radial-gradient(circle at 20% 80%, #e28d6b, #b55a3c); box-shadow: inset -4px 4px 10px rgba(80,30,10,0.6); }
+        .visual-eris { background: radial-gradient(circle at 30% 70%, #f5f5f5, #cccccc); box-shadow: inset 5px -5px 12px rgba(0,0,0,0.5); }
+        .visual-luna { background: radial-gradient(circle at 20% 20%, #e0e0e0, #8c8c8c); box-shadow: inset -2px -2px 5px rgba(0,0,0,0.5), 0 0 0.5px #fff; }
+        .visual-phobos, .visual-deimos { background: radial-gradient(circle, #968c83, #5e5650); box-shadow: inset -1px -1px 3px rgba(0,0,0,0.7); }
+        .visual-io { background: radial-gradient(circle, #f9e79f, #f1c40f); box-shadow: inset -3px -3px 6px rgba(120, 80, 0, 0.6); }
+        .visual-europa { background: radial-gradient(circle, #fdfefe, #d5d8dc); box-shadow: inset -3px -3px 6px rgba(0, 0, 50, 0.4); }
+        .visual-ganymede { background: radial-gradient(circle, #c3bba4, #8b806b); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5); }
+        .visual-callisto { background: radial-gradient(circle, #797069, #4b443d); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.7); }
+        .visual-titan { background: radial-gradient(circle, #f5b041, #d35400); box-shadow: inset -4px -4px 10px rgba(100, 40, 0, 0.6); }
+        .visual-enceladus { background: radial-gradient(circle, #ffffff, #e5e7e9); box-shadow: inset -3px -3px 6px rgba(0, 0, 50, 0.3); }
+        .visual-mimas { background: radial-gradient(circle, #bdc3c7, #979a9a); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5); }
+        .visual-charon { background: radial-gradient(circle, #c9b7a9, #a38d7b); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5); }
+
+        /* --- Vista de Sistema Planetario (Lunas) --- */
+        #planet-system-view { z-index: 30; }
+        .planet-system { position: relative; width: 90vmin; height: 90vmin; display: flex; justify-content: center; align-items: center; transform-style: preserve-3d; }
+        .central-planet { width: 25%; height: 25%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .moon { top: 50%; left: 0; min-width: 8px; min-height: 8px; }
+        #back-to-solar-system { position: absolute; top: 1.5rem; left: 1.5rem; z-index: 50; background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); border-radius: 999px; padding: 0.5rem 1rem; color: white; font-weight: 600; cursor: pointer; }
+        
+        /* --- Estilos de Exploración y Cometas --- */
+        #special-objects-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .probe {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 20;
+            /* CORRECCIÓN: Nuevo diseño de sonda */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="12" x2="12" y2="4"></line><circle cx="12" cy="12" r="1.5" fill="white"></circle></svg>');
+            background-size: contain;
+            filter: drop-shadow(0 0 5px #fff);
+        }
+        .rover {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #ff4500;
+            border: 1px solid white;
+            border-radius: 50%;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 20;
+            transition: left 0.1s linear, top 0.1s linear;
+        }
+        .comet-path {
+            stroke: transparent;
+            fill: none;
+        }
+        .comet {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #ffffff, #add8e6);
+            border-radius: 50%;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 20;
+        }
+        .comet::after { /* Cola del cometa */
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 30px;
+            height: 2px;
+            background: linear-gradient(to right, rgba(255,255,255,0.5), transparent);
+            border-radius: 50%;
+            transform-origin: left center;
+        }
+
+        /* NUEVO: Estilos del panel de información rediseñado */
+        #info-panel, #comparison-panel {
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            background: rgba(12, 10, 30, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        .stat-icon {
+            flex-shrink: 0;
+            color: #94a3b8;
+        }
+
+        /* NUEVO: Tooltip */
+        #tooltip {
+            position: fixed;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+    </style>
+</head>
+<body class="text-white overflow-hidden">
+
+    <!-- NUEVO: Contenedor del fondo Parallax -->
+    <div id="parallax-bg">
+        <div id="stars1" class="stars"></div>
+        <div id="stars2" class="stars"></div>
+        <div id="stars3" class="stars"></div>
+    </div>
+
+    <!-- NUEVO: Elemento Tooltip -->
+    <div id="tooltip"></div>
+
+    <div class="flex flex-col md:flex-row w-full h-screen">
+        <!-- Contenedor de Visualización -->
+        <div id="main-container" class="w-full md:w-2/3 h-1/2 md:h-full p-4 relative flex items-center justify-center overflow-hidden">
+            
+            <!-- Vista del Sistema Solar -->
+            <div id="solar-system-view" class="view-container">
+                <div id="view-toggle">
+                    <button id="planets-btn" class="toggle-button active">Planetas</button>
+                    <button id="dwarfs-btn" class="toggle-button">Planetas Enanos</button>
+                    <button id="exploration-btn" class="toggle-button">Exploración</button>
+                    <button id="comets-btn" class="toggle-button">Cometas</button>
+                    <button id="compare-btn" class="toggle-button" title="Comparar Planetas">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16.5l4-4-4-4"></path><path d="M8 7.5l-4 4 4 4"></path><path d="M4 11.5h16"></path></svg>
+                    </button>
+                    <!-- NUEVO: Botón de Sonido -->
+                    <button id="sound-btn" class="toggle-button">
+                        <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                    </button>
+                </div>
+                <div class="solar-system">
+                    <div id="sun" class="sun celestial-body" data-id="sun"></div>
+                    <div id="mercury-orbit" class="orbit planet-orbit"><div id="mercury" class="planet celestial-body visual-mercury" data-id="mercury"></div></div>
+                    <div id="venus-orbit" class="orbit planet-orbit"><div id="venus" class="planet celestial-body visual-venus" data-id="venus"></div></div>
+                    <div id="earth-orbit" class="orbit planet-orbit"><div id="earth" class="planet celestial-body visual-earth" data-id="earth"></div></div>
+                    <div id="mars-orbit" class="orbit planet-orbit"><div id="mars" class="planet celestial-body visual-mars" data-id="mars"></div></div>
+                    <div id="jupiter-orbit" class="orbit planet-orbit"><div id="jupiter" class="planet celestial-body visual-jupiter" data-id="jupiter"></div></div>
+                    <div id="saturn-orbit" class="orbit planet-orbit"><div id="saturn" class="planet celestial-body visual-saturn" data-id="saturn"></div></div>
+                    <div id="uranus-orbit" class="orbit planet-orbit"><div id="uranus" class="planet celestial-body visual-uranus" data-id="uranus"></div></div>
+                    <div id="neptune-orbit" class="orbit planet-orbit"><div id="neptune" class="planet celestial-body visual-neptune" data-id="neptune"></div></div>
+                    <div id="ceres-orbit" class="orbit dwarf-planet-orbit hidden"><div id="ceres" class="dwarf-planet celestial-body visual-ceres" data-id="ceres"></div></div>
+                    <div id="pluto-orbit" class="orbit dwarf-planet-orbit hidden"><div id="pluto" class="dwarf-planet celestial-body visual-pluto" data-id="pluto"></div></div>
+                    <div id="haumea-orbit" class="orbit dwarf-planet-orbit hidden"><div id="haumea" class="dwarf-planet celestial-body visual-haumea" data-id="haumea"></div></div>
+                    <div id="makemake-orbit" class="orbit dwarf-planet-orbit hidden"><div id="makemake" class="dwarf-planet celestial-body visual-makemake" data-id="makemake"></div></div>
+                    <div id="eris-orbit" class="orbit dwarf-planet-orbit hidden"><div id="eris" class="dwarf-planet celestial-body visual-eris" data-id="eris"></div></div>
+                    <div class="asteroid-belt"></div>
+                    <div class="kuiper-belt dwarf-planet-orbit hidden"></div>
+
+                    <!-- Capa de Objetos Especiales -->
+                    <div id="special-objects-layer" class="hidden">
+                         <div id="icon-container" class="absolute w-full h-full top-0 left-0"></div>
+                         <svg id="comet-svg-layer" class="absolute w-full h-full top-0 left-0 overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vista de Sistema Planetario (Lunas) -->
+            <div id="planet-system-view" class="view-container hidden">
+                <button id="back-to-solar-system">← Volver al Sistema Solar</button>
+                <div id="planet-system-container" class="planet-system"></div>
+            </div>
+
+        </div>
+
+        <!-- Panel de Información -->
+        <div class="w-full md:w-1/3 h-1/2 md:h-full bg-transparent p-6 md:p-8 flex items-center justify-center">
+            <div id="info-panel" class="max-w-md w-full opacity-0">
+                <h2 id="info-title" class="text-4xl md:text-5xl font-bold text-yellow-300 mb-4">Sistema Solar</h2>
+                <p id="info-description" class="text-lg mb-6 text-gray-300">Haz clic en un cuerpo celeste para aprender más sobre él.</p>
+                <div id="info-stats" class="flex flex-col"></div>
+            </div>
+            <!-- Panel de Comparación -->
+            <div id="comparison-panel" class="max-w-md w-full hidden">
+                 <!-- El contenido se generará con JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Base de Datos de Información Astronómica ---
+            const astroData = {
+                sun: { name: 'El Sol', description: 'Nuestra estrella y el objeto más masivo del Sistema Solar...', stats: { 'Diámetro': '1,392,700 km', 'Tipo': 'Estrella tipo G (enana amarilla)', 'Temperatura Superficial': '5,505 °C', 'Edad': 'Aprox. 4.6 mil millones de años' } },
+                mercury: { name: 'Mercurio', description: 'El planeta más pequeño y cercano al Sol...', stats: { 'Diámetro': '4,879 km', 'Distancia al Sol': '57.9M km', 'Duración del día': '59 días', 'Lunas': '0' } },
+                venus: { name: 'Venus', description: 'Similar en tamaño a la Tierra...', stats: { 'Diámetro': '12,104 km', 'Distancia al Sol': '108.2M km', 'Temperatura Media': '465 °C', 'Lunas': '0' } },
+                earth: { 
+                    name: 'La Tierra', description: 'Nuestro hogar...', stats: { 'Diámetro': '12,742 km', 'Distancia al Sol': '149.6M km', 'Población': '~8 mil millones', 'Lunas': '1' },
+                    moons: { luna: { name: 'La Luna', description: 'El único satélite natural de la Tierra...', stats: { 'Diámetro': '3,474 km', 'Distancia a la Tierra': '384,400 km' }, size: 4.5 } }
+                },
+                mars: { 
+                    name: 'Marte', description: 'Conocido como el "Planeta Rojo"...', stats: { 'Diámetro': '6,779 km', 'Distancia al Sol': '227.9M km', 'Duración del día': '24.6 horas', 'Lunas': '2' },
+                    moons: {
+                        phobos: { name: 'Fobos', description: 'La más grande y cercana de las dos lunas de Marte...', stats: { 'Diámetro': '22.2 km', 'Dato': 'Orbita Marte más rápido de lo que Marte rota.' }, size: 1.5 },
+                        deimos: { name: 'Deimos', description: 'La más pequeña y externa de las lunas de Marte...', stats: { 'Diámetro': '12.4 km', 'Dato': 'Superficie muy lisa por el regolito.' }, size: 1 }
+                    }
+                },
+                jupiter: { 
+                    name: 'Júpiter', description: 'El gigante gaseoso...', stats: { 'Diámetro': '139,820 km', 'Distancia al Sol': '778.5M km', 'Composición': 'H y He', 'Lunas': '95' },
+                    moons: {
+                        io: { name: 'Ío', description: 'El objeto con mayor actividad volcánica del Sistema Solar...', stats: { 'Diámetro': '3,642 km', 'Dato': 'Superficie cubierta de azufre.' }, size: 5 },
+                        europa: { name: 'Europa', description: 'Tiene una superficie de hielo de agua...', stats: { 'Diámetro': '3,121 km', 'Dato': 'Candidato principal para buscar vida.' }, size: 4.5 },
+                        ganymede: { name: 'Ganímedes', description: 'La luna más grande del Sistema Solar...', stats: { 'Diámetro': '5,268 km', 'Dato': 'Tiene su propio campo magnético.' }, size: 6 },
+                        callisto: { name: 'Calisto', description: 'Tiene una de las superficies más antiguas...', stats: { 'Diámetro': '4,820 km', 'Dato': 'Podría albergar un océano subsuperficial.' }, size: 5.5 }
+                    }
+                },
+                saturn: {
+                    name: 'Saturno', description: 'El segundo planeta más grande...', stats: { 'Diámetro': '116,460 km', 'Distancia al Sol': '1.43B km', 'Anillos': '7', 'Lunas': '146' },
+                    moons: {
+                        titan: { name: 'Titán', description: 'La segunda luna más grande...', stats: { 'Diámetro': '5,149 km', 'Atmósfera': 'Nitrógeno y metano' }, size: 5.8 },
+                        enceladus: { name: 'Encélado', description: 'Casi completamente cubierta de hielo fresco...', stats: { 'Diámetro': '504 km', 'Dato': 'Océano global bajo el hielo.' }, size: 2.5 },
+                        mimas: { name: 'Mimas', description: 'Conocida por su enorme cráter de impacto...', stats: { 'Diámetro': '396 km', 'Dato': 'El cráter Herschel tiene 130 km de ancho.' }, size: 2 }
+                    }
+                },
+                uranus: { name: 'Urano', description: 'Un gigante de hielo que rota de lado...', stats: { 'Diámetro': '50,724 km', 'Distancia al Sol': '2.87B km', 'Inclinación Axial': '97.77°', 'Lunas': '27' } },
+                neptune: { name: 'Neptuno', description: 'El planeta más distante del Sol...', stats: { 'Diámetro': '49,244 km', 'Distancia al Sol': '4.5B km', 'Velocidad del Viento': '>2000 km/h', 'Lunas': '14' } },
+                ceres: { name: 'Ceres', description: 'El objeto más grande del cinturón de asteroides...', stats: { 'Diámetro': '940 km', 'Ubicación': 'C. Asteroides', 'Descubrimiento': '1801', 'Dato': 'Contiene 1/3 de la masa del cinturón.' } },
+                pluto: { 
+                    name: 'Plutón', description: 'El planeta enano más famoso...', stats: { 'Diámetro': '2,377 km', 'Ubicación': 'C. Kuiper', 'Año': '248 años T.', 'Lunas': '5' },
+                    moons: { charon: { name: 'Caronte', description: 'La luna más grande de Plutón...', stats: { 'Diámetro': '1,212 km', 'Dato': 'El centro de masa está fuera de Plutón.' }, size: 3 } }
+                },
+                haumea: { name: 'Haumea', description: 'Uno de los objetos de rotación más rápida...', stats: { 'Diámetro': '~1,632 km', 'Ubicación': 'C. Kuiper', 'Rotación': '< 4 horas', 'Dato': 'Forma ovalada.' } },
+                makemake: { name: 'Makemake', description: 'Un mundo frío y rojizo...', stats: { 'Diámetro': '1,430 km', 'Ubicación': 'C. Kuiper', 'Temp. Media': '-243 °C', 'Lunas': '1' } },
+                eris: { name: 'Eris', description: 'Más masivo que Plutón...', stats: { 'Diámetro': '2,326 km', 'Ubicación': 'Disco Disperso', 'Masa': '27% > Plutón', 'Lunas': '1' } },
+                probes: {
+                    voyager1: { name: 'Voyager 1', description: 'Lanzada en 1977, estudió Júpiter y Saturno. Es el objeto humano más distante y el primero en alcanzar el espacio interestelar.', stats: { 'Lanzamiento': '5 Sep 1977', 'Destino': 'Espacio Interestelar', 'Logro': 'Entró en espacio interestelar en 2012' } },
+                    voyager2: { name: 'Voyager 2', description: 'La única sonda que ha visitado Urano y Neptuno. También estudió Júpiter y Saturno, completando el "Gran Tour" planetario.', stats: { 'Lanzamiento': '20 Ago 1977', 'Destino': 'Espacio Interestelar', 'Logro': 'Visitó 4 planetas gigantes' } },
+                    newhorizons: { name: 'New Horizons', description: 'Misión diseñada para estudiar Plutón, sus lunas y otros objetos del Cinturón de Kuiper. Realizó el primer sobrevuelo de Plutón en 2015.', stats: { 'Lanzamiento': '19 Ene 2006', 'Destino': 'Cinturón de Kuiper', 'Logro': 'Primeras imágenes de cerca de Plutón' } },
+                    perseverance: { name: 'Perseverance', description: 'Rover en Marte que busca signos de vida microbiana antigua y recolecta muestras de roca y suelo para un posible retorno a la Tierra.', stats: { 'Aterrizaje': '18 Feb 2021', 'Ubicación': 'Cráter Jezero, Marte', 'Logro': 'Despliegue del helicóptero Ingenuity' } }
+                },
+                comets: {
+                    halley: { name: 'Cometa Halley', description: 'El cometa periódico más famoso, visible desde la Tierra cada 75-76 años. Ha sido observado por astrónomos desde al menos el 240 a.C.', stats: { 'Período Orbital': '76 años', 'Próximo Perihelio': '2061', 'Composición': 'Hielo, roca y polvo' } }
+                }
+            };
+
+            // --- Elementos del DOM ---
+            const mainContainer = document.getElementById('main-container');
+            const parallaxBg = document.getElementById('parallax-bg');
+            const tooltip = document.getElementById('tooltip');
+            const solarSystemView = document.getElementById('solar-system-view');
+            const planetSystemView = document.getElementById('planet-system-view');
+            const planetSystemContainer = document.getElementById('planet-system-container');
+            const backToSolarSystemBtn = document.getElementById('back-to-solar-system');
+            const specialObjectsLayer = document.getElementById('special-objects-layer');
+            const solarSystem = document.querySelector('.solar-system');
+            const infoPanel = document.getElementById('info-panel');
+            const comparisonPanel = document.getElementById('comparison-panel');
+            const infoTitle = document.getElementById('info-title');
+            const infoDescription = document.getElementById('info-description');
+            const infoStats = document.getElementById('info-stats');
+            const planetsBtn = document.getElementById('planets-btn');
+            const dwarfsBtn = document.getElementById('dwarfs-btn');
+            const explorationBtn = document.getElementById('exploration-btn');
+            const cometsBtn = document.getElementById('comets-btn');
+            const compareBtn = document.getElementById('compare-btn');
+            const soundBtn = document.getElementById('sound-btn');
+            const startTime = Date.now(); 
+
+            // --- Estado de la Aplicación ---
+            let inComparisonMode = false;
+            let comparisonList = [];
+            let isSoundOn = false;
+
+            // --- Lógica de Sonido ---
+            const clickSound = new Tone.MembraneSynth({
+                pitchDecay: 0.01,
+                octaves: 6,
+                envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.2 },
+            }).toDestination();
+            clickSound.volume.value = -20;
+            const ambientHum = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 1, decay: 0.5, sustain: 1 } }).toDestination();
+            ambientHum.volume.value = -40; 
+
+            function playClick() { if (isSoundOn) clickSound.triggerAttackRelease("C2", "32n"); }
+            function toggleSound() {
+                isSoundOn = !isSoundOn;
+                document.getElementById('sound-on-icon').classList.toggle('hidden', !isSoundOn);
+                document.getElementById('sound-off-icon').classList.toggle('hidden', isSoundOn);
+                if (isSoundOn) {
+                    Tone.start();
+                    ambientHum.triggerAttack();
+                } else {
+                    ambientHum.triggerRelease();
+                }
+            }
+
+            // --- Funciones de Renderizado ---
+            function showInfo(data) {
+                if (!data) return;
+                comparisonPanel.classList.add('hidden');
+                infoPanel.classList.remove('hidden');
+
+                infoTitle.textContent = data.name;
+                infoDescription.textContent = data.description;
+                infoStats.innerHTML = '';
+                const statIcons = {
+                    'Diámetro': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8.11 2.99"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
+                    'Temperatura Superficial': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0z"/></svg>',
+                    'Distancia al Sol': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m4.93 19.07 1.41-1.41"></path><path d="m17.66 6.34 1.41-1.41"></path></svg>',
+                    'Lunas': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',
+                    'default': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
+                };
+                for (const [key, value] of Object.entries(data.stats)) {
+                    const iconSVG = statIcons[key] || statIcons['default'];
+                    const statDiv = document.createElement('div');
+                    statDiv.className = 'stat-item';
+                    statDiv.innerHTML = `<div class="stat-icon">${iconSVG}</div> <div><p class="font-semibold text-gray-400 text-sm">${key}</p><p class="text-lg">${value}</p></div>`;
+                    infoStats.appendChild(statDiv);
+                }
+
+                document.querySelectorAll('.celestial-body, .probe, .rover, .comet').forEach(el => el.classList.remove('active'));
+                const activeBody = document.querySelector(`[data-id="${data.id}"]`);
+                if (activeBody) activeBody.classList.add('active');
+            }
+
+            function showPlanetSystem(planetId) {
+                const planetData = astroData[planetId];
+                planetData.id = planetId;
+                if (!planetData.moons) {
+                    handleSelection(planetId);
+                    return;
+                }
+
+                solarSystemView.classList.add('hidden');
+                planetSystemView.classList.remove('hidden');
+                
+                planetSystemContainer.innerHTML = '';
+
+                const originalPlanet = document.getElementById(planetId);
+                const visualClass = Array.from(originalPlanet.classList).find(c => c.startsWith('visual-'));
+
+                const centralPlanet = document.createElement('div');
+                centralPlanet.id = `central-${planetId}`;
+                centralPlanet.className = `central-planet celestial-body active ${visualClass}`;
+                centralPlanet.dataset.id = planetId;
+                
+                planetSystemContainer.appendChild(centralPlanet);
+                
+                centralPlanet.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showInfo(planetData);
+                    document.querySelectorAll('.moon').forEach(m => m.classList.remove('active'));
+                    centralPlanet.classList.add('active');
+                });
+
+                let orbitSize = 40;
+                let animDuration = 25; 
+                Object.entries(planetData.moons).forEach(([moonId, moonData]) => {
+                    const moonOrbit = document.createElement('div');
+                    moonOrbit.className = 'orbit';
+                    moonOrbit.style.width = `${orbitSize}%`;
+                    moonOrbit.style.height = `${orbitSize}%`;
+                    moonOrbit.style.animationDuration = `${animDuration}s`;
+                    
+                    const moon = document.createElement('div');
+                    moon.className = `moon celestial-body visual-${moonId}`;
+                    moon.dataset.id = moonId;
+                    moon.style.width = `${moonData.size}%`;
+                    moon.style.height = `${moonData.size}%`;
+                    moon.style.transform = 'translateY(-50%)';
+
+                    moon.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        moonData.id = moonId;
+                        showInfo(moonData);
+                        document.querySelectorAll('.celestial-body').forEach(el => el.classList.remove('active'));
+                        moon.classList.add('active');
+                    });
+
+                    moonOrbit.appendChild(moon);
+                    planetSystemContainer.appendChild(moonOrbit);
+
+                    orbitSize += 15;
+                    animDuration += 15;
+                });
+                
+                showInfo(planetData);
+            }
+            
+            function switchView(view) {
+                if (inComparisonMode) toggleComparisonMode();
+
+                planetsBtn.classList.toggle('active', view === 'planets');
+                dwarfsBtn.classList.toggle('active', view === 'dwarfs');
+                explorationBtn.classList.toggle('active', view === 'exploration');
+                cometsBtn.classList.toggle('active', view === 'comets');
+
+                const isPlanetView = view === 'planets';
+                const isDwarfView = view === 'dwarfs';
+                const isExplorationView = view === 'exploration';
+                const isCometView = view === 'comets';
+
+                solarSystem.style.transform = isDwarfView || isCometView ? 'scale(0.75)' : 'scale(1)';
+                
+                document.querySelectorAll('.planet-orbit, .dwarf-planet-orbit').forEach(o => {
+                    const isPlanet = o.classList.contains('planet-orbit');
+                    const isDwarf = o.classList.contains('dwarf-planet-orbit');
+                    if (isExplorationView || isCometView) {
+                        o.classList.remove('hidden');
+                    } else {
+                        o.classList.toggle('hidden', isPlanet ? isDwarfView : !isDwarfView);
+                    }
+                });
+
+                document.querySelector('.asteroid-belt').style.display = (isDwarfView) ? 'none' : 'block';
+                specialObjectsLayer.classList.toggle('hidden', !isExplorationView && !isCometView);
+                document.getElementById('icon-container').classList.toggle('hidden', !isExplorationView);
+                document.getElementById('comet-svg-layer').classList.toggle('hidden', !isCometView);
+
+
+                let defaultId;
+                if(isPlanetView) defaultId = 'sun';
+                if(isDwarfView) defaultId = 'pluto';
+                if(isExplorationView) defaultId = 'perseverance';
+                if(isCometView) defaultId = 'halley';
+                
+                const defaultData = astroData[defaultId] || astroData.probes[defaultId] || astroData.comets[defaultId];
+                defaultData.id = defaultId;
+                showInfo(defaultData);
+            }
+
+            function createSpecialObjectsLayer() {
+                const iconContainer = document.getElementById('icon-container');
+                const svgContainer = document.getElementById('comet-svg-layer');
+                if(!iconContainer || !svgContainer) return;
+
+                // Crear iconos estáticos para sondas
+                const voyager1 = document.createElement('div');
+                voyager1.id = 'icon-voyager1'; voyager1.className = 'probe'; voyager1.dataset.id = 'voyager1';
+                voyager1.style.left = '105%'; voyager1.style.top = '10%';
+                iconContainer.appendChild(voyager1);
+
+                const voyager2 = document.createElement('div');
+                voyager2.id = 'icon-voyager2'; voyager2.className = 'probe'; voyager2.dataset.id = 'voyager2';
+                voyager2.style.left = '105%'; voyager2.style.top = '90%';
+                iconContainer.appendChild(voyager2);
+
+                const newHorizons = document.createElement('div');
+                newHorizons.id = 'icon-newhorizons'; newHorizons.className = 'probe'; newHorizons.dataset.id = 'newhorizons';
+                newHorizons.style.left = '90%'; newHorizons.style.top = '30%';
+                iconContainer.appendChild(newHorizons);
+
+                const perseverance = document.createElement('div');
+                perseverance.id = 'icon-perseverance'; perseverance.className = 'rover'; perseverance.dataset.id = 'perseverance';
+                iconContainer.appendChild(perseverance);
+
+                // Crear cometa y su órbita SVG
+                const halleyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                halleyPath.id = 'path-halley';
+                halleyPath.setAttribute('class', 'comet-path');
+                halleyPath.setAttribute('d', 'M 50,50 m -48,0 a 48,35 0 1,0 96,0 a 48,35 0 1,0 -96,0');
+                halleyPath.style.transform = 'translateX(-10px) rotate(25deg)';
+                halleyPath.style.transformOrigin = 'center center';
+                svgContainer.appendChild(halleyPath);
+
+                const halleyComet = document.createElement('div');
+                halleyComet.id = 'comet-halley';
+                halleyComet.className = 'comet';
+                halleyComet.dataset.id = 'halley';
+                specialObjectsLayer.appendChild(halleyComet); // Añadir al contenedor general
+
+                document.querySelectorAll('.probe, .rover, .comet').forEach(p => {
+                    p.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playClick();
+                        const data = astroData.probes[p.dataset.id] || astroData.comets[p.dataset.id];
+                        showInfo(data);
+                    });
+                });
+            }
+
+            function updateDynamicElements() {
+                const marsEl = document.getElementById('mars');
+                const roverIcon = document.getElementById('icon-perseverance');
+                const solarSystemContainer = document.querySelector('.solar-system');
+                const halleyPath = document.getElementById('path-halley');
+                const halleyComet = document.getElementById('comet-halley');
+
+                if (solarSystemContainer) {
+                    // Actualizar Rover
+                    if (!document.getElementById('icon-container').classList.contains('hidden') && marsEl && roverIcon) {
+                        const marsRect = marsEl.getBoundingClientRect();
+                        const containerRect = solarSystemContainer.getBoundingClientRect();
+                        const x = marsRect.left - containerRect.left + (marsRect.width / 2);
+                        const y = marsRect.top - containerRect.top + (marsRect.height / 2);
+                        roverIcon.style.left = `${x}px`;
+                        roverIcon.style.top = `${y}px`;
+                        roverIcon.style.transform = 'translate(-50%, -50%)';
+                    }
+                    
+                    // Actualizar Cometa
+                    if (!document.getElementById('comet-svg-layer').classList.contains('hidden') && halleyPath && halleyComet) {
+                        const duration = 76 * 1000; 
+                        const progress = ((Date.now() - startTime) % duration) / duration;
+                        const pathLength = halleyPath.getTotalLength();
+                        const point = halleyPath.getPointAtLength(progress * pathLength);
+                        const nextPoint = halleyPath.getPointAtLength((progress + 0.01) % 1 * pathLength);
+                        const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * (180 / Math.PI);
+                        
+                        const containerRect = solarSystemContainer.getBoundingClientRect();
+                        const svgRect = document.getElementById('comet-svg-layer').getBoundingClientRect();
+                        const x = ((point.x / 100) * svgRect.width) + (svgRect.left - containerRect.left);
+                        const y = ((point.y / 100) * svgRect.height) + (svgRect.top - containerRect.top);
+
+                        halleyComet.style.left = `${x}px`;
+                        halleyComet.style.top = `${y}px`;
+                        halleyComet.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+                    }
+                }
+                requestAnimationFrame(updateDynamicElements);
+            }
+
+            // --- Lógica de Comparación ---
+            function toggleComparisonMode() {
+                playClick();
+                inComparisonMode = !inComparisonMode;
+                compareBtn.classList.toggle('active', inComparisonMode);
+                comparisonList = [];
+                document.querySelectorAll('.for-comparison').forEach(el => el.classList.remove('for-comparison'));
+                
+                if (inComparisonMode) {
+                    infoPanel.classList.add('hidden');
+                    comparisonPanel.classList.remove('hidden');
+                    comparisonPanel.innerHTML = `<h2 class="text-2xl font-bold text-green-400 mb-4">Modo Comparación</h2><p class="text-gray-300">Selecciona dos cuerpos celestes para compararlos.</p>`;
+                } else {
+                    infoPanel.classList.remove('hidden');
+                    comparisonPanel.classList.add('hidden');
+                    showInfo(astroData.sun); 
+                }
+            }
+
+            function handleComparisonSelection(id) {
+                playClick();
+                const el = document.querySelector(`[data-id="${id}"]`);
+                if (comparisonList.includes(id)) {
+                    comparisonList = comparisonList.filter(item => item !== id);
+                    el.classList.remove('for-comparison');
+                } else if (comparisonList.length < 2) {
+                    comparisonList.push(id);
+                    el.classList.add('for-comparison');
+                }
+
+                if (comparisonList.length === 2) {
+                    displayComparison(comparisonList[0], comparisonList[1]);
+                } else if (comparisonList.length === 1) {
+                    comparisonPanel.innerHTML = `<h2 class="text-2xl font-bold text-green-400 mb-4">Modo Comparación</h2><p class="text-gray-300">Seleccionado: <span class="font-bold">${astroData[comparisonList[0]].name}</span>. Selecciona uno más.</p>`;
+                } else {
+                    comparisonPanel.innerHTML = `<h2 class="text-2xl font-bold text-green-400 mb-4">Modo Comparación</h2><p class="text-gray-300">Selecciona dos cuerpos celestes para compararlos.</p>`;
+                }
+            }
+
+            function displayComparison(id1, id2) {
+                const data1 = astroData[id1];
+                const data2 = astroData[id2];
+                const allKeys = [...new Set([...Object.keys(data1.stats), ...Object.keys(data2.stats)])];
+
+                let tableHTML = `
+                    <div class="grid grid-cols-3 gap-x-4 text-center items-center">
+                        <div class="font-bold text-lg text-gray-400 text-left">Característica</div>
+                        <div class="font-bold text-lg text-green-400">${data1.name}</div>
+                        <div class="font-bold text-lg text-green-400">${data2.name}</div>
+                    </div>
+                    <hr class="border-gray-600 my-2">
+                `;
+
+                allKeys.forEach(key => {
+                    tableHTML += `
+                        <div class="grid grid-cols-3 gap-x-4 text-center items-center py-1 border-b border-gray-700">
+                            <div class="font-semibold text-gray-400 text-left">${key}</div>
+                            <div class="text-sm">${data1.stats[key] || '-'}</div>
+                            <div class="text-sm">${data2.stats[key] || '-'}</div>
+                        </div>
+                    `;
+                });
+                comparisonPanel.innerHTML = tableHTML;
+            }
+
+            function handleSelection(id) {
+                // CORRECCIÓN: Llamar a showInfo directamente para planetas sin lunas
+                const data = astroData[id];
+                if (inComparisonMode) {
+                    handleComparisonSelection(id);
+                } else {
+                    playClick();
+                    if (data && data.moons) {
+                        showPlanetSystem(id);
+                    } else if (data) {
+                        showInfo(data);
+                    }
+                }
+            }
+
+            // --- Event Listeners ---
+            document.querySelectorAll('.celestial-body').forEach(body => {
+                body.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleSelection(body.dataset.id);
+                });
+                // Tooltip Listeners
+                body.addEventListener('mouseover', (e) => {
+                    const data = astroData[body.dataset.id] || astroData.comets[body.dataset.id];
+                    if(data) {
+                        tooltip.textContent = data.name;
+                        tooltip.style.opacity = '1';
+                    }
+                });
+                body.addEventListener('mouseout', () => {
+                    tooltip.style.opacity = '0';
+                });
+            });
+
+            mainContainer.addEventListener('mousemove', (e) => {
+                // Parallax
+                const { clientX, clientY } = e;
+                const { offsetWidth, offsetHeight } = mainContainer;
+                const x = (clientX - offsetWidth / 2) / (offsetWidth / 2);
+                const y = (clientY - offsetHeight / 2) / (offsetHeight / 2);
+                document.getElementById('stars1').style.transform = `translate3d(${x * -5}px, ${y * -5}px, 0)`;
+                document.getElementById('stars2').style.transform = `translate3d(${x * -10}px, ${y * -10}px, 0)`;
+                document.getElementById('stars3').style.transform = `translate3d(${x * -15}px, ${y * -15}px, 0)`;
+
+                // Tooltip
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+            });
+            
+            planetsBtn.addEventListener('click', () => { playClick(); switchView('planets'); });
+            dwarfsBtn.addEventListener('click', () => { playClick(); switchView('dwarfs'); });
+            explorationBtn.addEventListener('click', () => { playClick(); switchView('exploration'); });
+            cometsBtn.addEventListener('click', () => { playClick(); switchView('comets'); });
+            compareBtn.addEventListener('click', toggleComparisonMode);
+            soundBtn.addEventListener('click', toggleSound);
+
+            backToSolarSystemBtn.addEventListener('click', () => {
+                playClick();
+                solarSystemView.classList.remove('hidden');
+                planetSystemView.classList.add('hidden');
+            });
+
+            // --- Estado Inicial ---
+            createSpecialObjectsLayer();
+            updateDynamicElements(); 
+            setTimeout(() => {
+                const sunData = astroData.sun;
+                sunData.id = 'sun';
+                showInfo(sunData);
+                infoPanel.style.opacity = '1';
+            }, 500);
+        });
+    </script>
+</body>
+</html>
