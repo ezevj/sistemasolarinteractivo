@@ -203,12 +203,12 @@
         .planet, .dwarf-planet { transform: translateY(-50%); }
         #haumea { transform: translateY(-50%) rotate(45deg); }
 
-        /* --- Cinturones --- */
+        
         .asteroid-belt, .kuiper-belt { position: absolute; border-radius: 50%; pointer-events: none; border: 2px dashed rgba(255, 255, 255, 0.2); animation: rotate-orbit linear infinite; }
         .asteroid-belt { width: 52%; height: 52%; animation-duration: 150s; }
         .kuiper-belt { width: 118%; height: 118%; animation-duration: 2000s; }
 
-        /* --- Clases visuales separadas de los tamaños --- */
+        
         .visual-mercury { background: radial-gradient(circle at 20% 20%, #E5E5E5, #8A8A8A); box-shadow: inset -5px -5px 10px rgba(0,0,0,0.5); }
         .visual-venus { background: radial-gradient(circle at 70% 20%, #F8E8C3, #D8B883); box-shadow: inset -5px -5px 15px rgba(100,80,50,0.6); }
         .visual-earth { background: radial-gradient(circle at 25% 30%, #6fa8dc, #0b4f8e 80%); box-shadow: inset -8px -8px 20px rgba(0,0,0,0.7); overflow: hidden; }
@@ -236,14 +236,14 @@
         .visual-mimas { background: radial-gradient(circle, #bdc3c7, #979a9a); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5); }
         .visual-charon { background: radial-gradient(circle, #c9b7a9, #a38d7b); box-shadow: inset -3px -3px 6px rgba(0,0,0,0.5); }
 
-        /* --- Vista de Sistema Planetario (Lunas) --- */
+        
         #planet-system-view { z-index: 30; }
         .planet-system { position: relative; width: 90vmin; height: 90vmin; display: flex; justify-content: center; align-items: center; transform-style: preserve-3d; }
         .central-planet { width: 25%; height: 25%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         .moon { top: 50%; left: 0; min-width: 8px; min-height: 8px; }
         #back-to-solar-system { position: absolute; top: 1.5rem; left: 1.5rem; z-index: 50; background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); border-radius: 999px; padding: 0.5rem 1rem; color: white; font-weight: 600; cursor: pointer; }
         
-        /* --- Estilos de Exploración y Cometas --- */
+        
         #special-objects-layer {
             position: absolute;
             top: 0;
@@ -327,7 +327,7 @@
             color: #94a3b8;
         }
 
-        /* NUEVO: Tooltip */
+        
         #tooltip {
             position: fixed;
             background-color: rgba(0,0,0,0.7);
@@ -352,7 +352,7 @@
         <div id="stars3" class="stars"></div>
     </div>
 
-    <!-- NUEVO: Elemento Tooltip -->
+   
     <div id="tooltip"></div>
 
     <div class="flex flex-col md:flex-row w-full h-screen">
@@ -479,7 +479,7 @@
                 }
             };
 
-            // --- Elementos del DOM ---
+            
             const mainContainer = document.getElementById('main-container');
             const parallaxBg = document.getElementById('parallax-bg');
             const tooltip = document.getElementById('tooltip');
@@ -530,7 +530,7 @@
                 }
             }
 
-            // --- Funciones de Renderizado ---
+            
             function showInfo(data) {
                 if (!data) return;
                 comparisonPanel.classList.add('hidden');
@@ -897,3 +897,4 @@
 </body>
 
 </html>
+
